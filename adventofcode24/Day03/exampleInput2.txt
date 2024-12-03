@@ -1,0 +1,4 @@
+xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))
+don't()do()don't()mul(1,2)do()mul(1,2)don't()mul(1,2)mul(1,2)do()(1,2)
+don't()fdsafdo()fasfaddon't()fasdfamul(1,2)fdasfdo()fasdfdsamul(1,2)fdasfadon't()fdasfamul(1,2)fdasfasmul(1,2)fdasfdo()(1,2)asfsafdsdon't()
+
