@@ -52,95 +52,65 @@ namespace adventofcode24.Day02
 
         public int part2A(List<List<int>> input)
         {
-            var counter = input.Count;
-            var ascending = false;
+            var counter = 0;
             foreach (var row in input)
             {
-                bool damper = true;
-                var rand = new Random();
-                var dir = getSortDirection(rand, row, 5);
-                ascending = dir == 1 ? true : false;
-                if (dir == 0)
+                if (validRow(row, true, true) || validRow(row, false, true))
                 {
-                    Console.WriteLine("ascending?: " + ascending + string.Join(", ", row));
-                    counter--;
-                    continue;
+                    counter++;
                 }
-                for (var i = 0; i < row.Count - 1; i++)
+                else
                 {
-                    if ( (row[i] < row[i + 1] && !ascending) || (row[i] > row[i + 1] && ascending) || Math.Abs(row[i] - row[i + 1]) > 3 || Math.Abs(row[i] - row[i + 1]) < 1)
-                    {
-                        //Console.WriteLine("wrong: "+ ascending+ string.Join(", ", row));
-                        if (!damper || i>=row.Count-2)
-                        {
-                            counter--;
-                            break;
-                        }
-                        if ((row[i] < row[i + 2] && !ascending) || (row[i] > row[i + 2] && ascending) || Math.Abs(row[i] - row[i + 2]) > 3 || Math.Abs(row[i] - row[i + 2]) < 1)
-                        {
-                            //Console.WriteLine("wrong damper: " + string.Join(", ", row));
-                            counter--;
-                            break;
-                        }
-                        damper = false;
-                    }
+
                 }
             }
             return counter;
         }
-
-        public (bool, bool) giveAsc(List<int> numbers)
+        private bool validRow(List<int> row, bool ascending, bool damper)
         {
-            var numbers2 = new List<int>(numbers);
-            int middleIndex = numbers2.Count / 2;
-            var firstHalf = numbers2.Take(middleIndex).ToList();
-            var secondHalf = numbers2.Skip(middleIndex).ToList();
-            int sumFirstHalf = firstHalf.Sum();
-            int sumSecondHalf = secondHalf.Sum();
-            if(sumFirstHalf == sumSecondHalf)
+            //start
+            if (!validPair(row[0], row[1], ascending))
             {
-                return (true, false);
+                if (!damper || !validPair(row[1], row[2], ascending))
+                {
+                    return false;
+                }
+                damper = false;
             }
-            return (sumFirstHalf < sumSecondHalf, true);
+            //middle
+            for (var i = 1; i < row.Count - 2; i++)
+            {
+                if (!validPair(row[i], row[i + 1], ascending))
+                {                                                                //this is retarded edge case
+                    if (!damper || (!validPair(row[i], row[i + 2], ascending) && !validPair(row[i - 1], row[i + 1], ascending)))
+                    {
+                        return false;
+                    }
+                    damper = false;
+                }
+            }
+            //end
+            if (!validPair(row[row.Count - 2], row[row.Count - 1], ascending))
+            {
+
+                if (!damper || !validPair(row[row.Count - 3], row[row.Count - 2], ascending))
+                {
+                    return false;
+                }
+                damper = false;
+
+            }
+            return true;
         }
 
-        private int getSortDirection(Random rand, List<int> inputs, int samples)
+        private bool validPair(int value1, int value2, bool ascending)
         {
-            var rn = rand.Next(0, inputs.Count - 2);
-            var incCount = 0;
-            var decCount = 0;
-            var sameCount = 0;
-            for (var i = 0; i < samples; i++)
+            if ((value1 < value2 && !ascending) || (value1 > value2 && ascending) || Math.Abs(value1 - value2) > 3 || Math.Abs(value1 - value2) < 1)
             {
-                if (inputs[rn] > inputs[rn + 1])
-                {
-                    incCount++;
-                }
-                else if (inputs[rn] < inputs[rn + 1])
-                {
-                    decCount++;
-                }
-                else
-                {
-                    sameCount++;
-                }
-                rn = rand.Next(0, inputs.Count - 2);
+                return false;
             }
-
-            if (incCount > decCount && incCount > sameCount)
-            {
-                return 1;
-            }
-            else if (decCount > incCount && decCount > sameCount)
-            {
-                return 2;
-            }
-            else
-            {
-                return 0;
-            }
+            return true;
         }
-
 
         //--------------------------------------J VS A-------------------------------------------//
 
