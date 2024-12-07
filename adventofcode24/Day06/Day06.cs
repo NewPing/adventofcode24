@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -17,19 +18,73 @@ namespace adventofcode24.Day06
             var inputFilePath = @"day06\input1.txt";
 
             var input = File.ReadAllLines(inputFilePath).Select(x => x.ToCharArray().ToList()).ToList();
-            Console.WriteLine(part1(input));
+            Console.WriteLine(part1(input).Item1);
 
-            input = File.ReadAllLines(inputFilePath).Select(x => x.ToCharArray().ToList()).ToList();
-            Console.WriteLine(part2(input));
+            Console.WriteLine(part2(inputFilePath));
         }
 
-        private int part2(List<List<char>> input)
+        private int part2(string inputFilePath)
+        {
+            var input0 = File.ReadAllLines(inputFilePath).Select(x => x.ToCharArray().ToList()).ToList();
+
+            var startPosX = getGuardInfo(input0).PosX;
+            var startPosY = getGuardInfo(input0).PosY;
+            var part1ResultField = part1(input0).Item2;
+            var possibleObsticlePlacements = new List<(int, int)>();
+            for (int iRow = 0; iRow < part1ResultField.Count; iRow++)
+            {
+                for (int iCol = 0; iCol < part1ResultField[iRow].Count; iCol++)
+                {
+                    if (part1ResultField[iRow][iCol] == 'X' && (iRow != startPosY || iCol != startPosX))
+                    {
+                        possibleObsticlePlacements.Add((iRow, iCol));
+                    }
+                }
+            }
+
+            var counter = 0;
+            foreach (var possiblePlacement in possibleObsticlePlacements)
+            {
+                var input = File.ReadAllLines(inputFilePath).Select(x => x.ToCharArray().ToList()).ToList();
+                input[possiblePlacement.Item1][possiblePlacement.Item2] = '#';
+                var isCausingLoop = isSimulatingMovesCausingLoop(input);
+                if (isCausingLoop)
+                {
+                    counter++;
+                }
+            }
+
+            return counter;
+        }
+
+        private bool isSimulatingMovesCausingLoop(List<List<char>> input)
+        {
+            var isGuardOnField = true;
+            var isGuardLooping = false;
+            var guardInfo = getGuardInfo(input);
+            var pastGuardInfos = new Dictionary<string, GuardInfo>();
+            while (isGuardOnField && !isGuardLooping)
+            {
+                isGuardOnField = makeMove(input, guardInfo);
+                isGuardLooping = !pastGuardInfos.TryAdd(guardInfo.ToString(), guardInfo);
+            }
+
+            if (!isGuardOnField)
+            {
+                return false;
+            } else
+            {
+                return true;
+            }
+        }
+
+        private (int, List<List<char>>) part1(List<List<char>> input)
         {
             var isGuardOnField = true;
             var guardInfo = getGuardInfo(input);
             while (isGuardOnField)
             {
-                isGuardOnField = makeMove(input, guardInfo).Item1;
+                isGuardOnField = makeMove(input, guardInfo);
             }
 
             var counter = 0;
@@ -44,36 +99,7 @@ namespace adventofcode24.Day06
                 }
             }
 
-            return counter;
-        }
-        
-        private bool isGuardLooping(Dictionary<string, GuardInfo> pastGuardInfos, GuardInfo currentGuardInfo)
-        {
-            return pastGuardInfos.ContainsKey(currentGuardInfo.ToString());
-        }
-
-        private int part1(List<List<char>> input)
-        {
-            var isGuardOnField = true;
-            var guardInfo = getGuardInfo(input);
-            while (isGuardOnField)
-            {
-                isGuardOnField = makeMove(input, guardInfo).Item1;
-            }
-
-            var counter = 0;
-            foreach (var row in input)
-            {
-                foreach (var cell in row)
-                {
-                    if (cell == 'X')
-                    {
-                        counter++;
-                    }
-                }
-            }
-
-            return counter;
+            return (counter, input);
         }
 
         /// <summary>
@@ -82,7 +108,7 @@ namespace adventofcode24.Day06
         /// <param name="input"></param>
         /// <returns></returns>
         /// <exception cref="NotImplementedException"></exception>
-        private (bool, GuardInfo) makeMove(List<List<char>> input, GuardInfo guardInfo)
+        private bool makeMove(List<List<char>> input, GuardInfo guardInfo)
         {
             var newGuardDirection = getNewGuardDirection(input, guardInfo);
             guardInfo.Direction = newGuardDirection.Item1;
@@ -114,7 +140,7 @@ namespace adventofcode24.Day06
                         throw new NotImplementedException("move not implemented...");
                 }
             }
-            return (isNextMoveValid, guardInfo);
+            return isNextMoveValid;
         }
 
         /// <summary>
