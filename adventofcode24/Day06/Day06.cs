@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace adventofcode24.Day06
 {
@@ -12,27 +14,22 @@ namespace adventofcode24.Day06
     {
         public Day06()
         {
-            var input = File.ReadAllLines(@"day06\input1.txt").Select(x => x.ToCharArray().Select(y => y.ToString()).ToList()).ToList();
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-            Console.WriteLine(part1(input)); //already takes 2-6 seconds... part2 must be an optimization problem
-            stopwatch.Stop();
-            Console.WriteLine(stopwatch.ElapsedMilliseconds);
+            var inputFilePath = @"day06\input1.txt";
 
-            Console.WriteLine(part2(input)); //f***, its an optimization problem...
+            var input = File.ReadAllLines(inputFilePath).Select(x => x.ToCharArray().ToList()).ToList();
+            Console.WriteLine(part1(input));
+
+            input = File.ReadAllLines(inputFilePath).Select(x => x.ToCharArray().ToList()).ToList();
+            Console.WriteLine(part2(input));
         }
 
-        private int part2(List<List<string>> input)
-        {
-            return 0;
-        }
-
-        private int part1(List<List<string>> input)
+        private int part2(List<List<char>> input)
         {
             var isGuardOnField = true;
+            var guardInfo = getGuardInfo(input);
             while (isGuardOnField)
             {
-                isGuardOnField = makeMove(input);
+                isGuardOnField = makeMove(input, guardInfo).Item1;
             }
 
             var counter = 0;
@@ -40,7 +37,36 @@ namespace adventofcode24.Day06
             {
                 foreach (var cell in row)
                 {
-                    if (cell == "X")
+                    if (cell == 'X')
+                    {
+                        counter++;
+                    }
+                }
+            }
+
+            return counter;
+        }
+        
+        private bool isGuardLooping(Dictionary<string, GuardInfo> pastGuardInfos, GuardInfo currentGuardInfo)
+        {
+            return pastGuardInfos.ContainsKey(currentGuardInfo.ToString());
+        }
+
+        private int part1(List<List<char>> input)
+        {
+            var isGuardOnField = true;
+            var guardInfo = getGuardInfo(input);
+            while (isGuardOnField)
+            {
+                isGuardOnField = makeMove(input, guardInfo).Item1;
+            }
+
+            var counter = 0;
+            foreach (var row in input)
+            {
+                foreach (var cell in row)
+                {
+                    if (cell == 'X')
                     {
                         counter++;
                     }
@@ -50,99 +76,149 @@ namespace adventofcode24.Day06
             return counter;
         }
 
-        private bool makeMove(List<List<string>> input)
+        /// <summary>
+        /// makes a move on the current input. if the guard goes outside of the field, it returns false; otherwise true
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        private (bool, GuardInfo) makeMove(List<List<char>> input, GuardInfo guardInfo)
         {
-            var guardInfo = getGuardInfo(input);
-            switch (guardInfo.Direction)
-            {
-                case GuardDirection.Up:
-                    input[guardInfo.PosY][guardInfo.PosX] = "X";
-                    if (guardInfo.PosY == 0)
-                    {
-                        return false;
-                    }
-                    if (input[guardInfo.PosY - 1][guardInfo.PosX] == "#")
-                    {
-                        input[guardInfo.PosY][guardInfo.PosX + 1] = ">";
-                    } else
-                    {
-                        input[guardInfo.PosY - 1][guardInfo.PosX] = "^";
-                    }
-                    break;
-                case GuardDirection.Right:
-                    input[guardInfo.PosY][guardInfo.PosX] = "X";
-                    if (guardInfo.PosX == input[guardInfo.PosY].Count -1)
-                    {
-                        return false;
-                    }
-                    if (input[guardInfo.PosY][guardInfo.PosX + 1] == "#")
-                    {
-                        input[guardInfo.PosY + 1][guardInfo.PosX] = "v";
-                    }
-                    else
-                    {
-                        input[guardInfo.PosY][guardInfo.PosX + 1] = ">";
-                    }
-                    break;
-                case GuardDirection.Left:
-                    input[guardInfo.PosY][guardInfo.PosX] = "X";
-                    if (guardInfo.PosX == 0)
-                    {
-                        return false;
-                    }
-                    if (input[guardInfo.PosY][guardInfo.PosX - 1] == "#")
-                    {
-                        input[guardInfo.PosY - 1][guardInfo.PosX] = "^";
-                    }
-                    else
-                    {
-                        input[guardInfo.PosY][guardInfo.PosX - 1] = "<";
-                    }
-                    break;
-                case GuardDirection.Down:
-                    input[guardInfo.PosY][guardInfo.PosX] = "X";
-                    if (guardInfo.PosY == input.Count -1)
-                    {
-                        return false;
-                    }
-                    if (input[guardInfo.PosY + 1][guardInfo.PosX] == "#")
-                    {
-                        input[guardInfo.PosY][guardInfo.PosX - 1] = "<";
-                    }
-                    else
-                    {
-                        input[guardInfo.PosY + 1][guardInfo.PosX] = "v";
-                    }
-                    break;
-                default: 
-                    throw new NotImplementedException("move not implemented...");
-            }
+            var newGuardDirection = getNewGuardDirection(input, guardInfo);
+            guardInfo.Direction = newGuardDirection.Item1;
+            var isNextMoveValid = newGuardDirection.Item2;
 
-            return true;
+            input[guardInfo.PosY][guardInfo.PosX] = 'X';
+
+            if (isNextMoveValid)
+            {
+                switch (guardInfo.Direction)
+                {
+                    case GuardDirection.Up:
+                        input[guardInfo.PosY - 1][guardInfo.PosX] = '^';
+                        guardInfo.PosY--;
+                        break;
+                    case GuardDirection.Right:
+                        input[guardInfo.PosY][guardInfo.PosX + 1] = '>';
+                        guardInfo.PosX++;
+                        break;
+                    case GuardDirection.Left:
+                        input[guardInfo.PosY][guardInfo.PosX - 1] = '<';
+                        guardInfo.PosX--;
+                        break;
+                    case GuardDirection.Down:
+                        input[guardInfo.PosY + 1][guardInfo.PosX] = 'v';
+                        guardInfo.PosY++;
+                        break;
+                    default:
+                        throw new NotImplementedException("move not implemented...");
+                }
+            }
+            return (isNextMoveValid, guardInfo);
         }
 
-        private GuardInfo getGuardInfo(List<List<string>> input)
+        /// <summary>
+        /// returns new direction + if a move with this direction would be valid; or if the guard would walk outside the grid if moved
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="guardInfo"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        /// <exception cref="Exception"></exception>
+        private (GuardDirection, bool) getNewGuardDirection(List<List<char>> input, GuardInfo guardInfo)
+        {
+            var turnCount = 0;
+            var direction = guardInfo.Direction;
+            while (turnCount < 4)
+            {
+                switch (direction)
+                {
+                    case GuardDirection.Up:
+                        if (guardInfo.PosY == 0)
+                        {
+                            return (direction, false);
+                        }
+                        if (input[guardInfo.PosY - 1][guardInfo.PosX] == '#')
+                        {
+                            direction = GuardDirection.Right;
+                        }
+                        else
+                        {
+                            return (direction, true);
+                        }
+                        break;
+                    case GuardDirection.Right:
+                        if (guardInfo.PosX == input[guardInfo.PosY].Count - 1)
+                        {
+                            return (direction, false);
+                        }
+                        if (input[guardInfo.PosY][guardInfo.PosX + 1] == '#')
+                        {
+                            direction = GuardDirection.Down;
+                        }
+                        else
+                        {
+                            return (direction, true);
+                        }
+                        break;
+                    case GuardDirection.Left:
+                        if (guardInfo.PosX == 0)
+                        {
+                            return (direction, false);
+                        }
+                        if (input[guardInfo.PosY][guardInfo.PosX - 1] == '#')
+                        {
+                            direction = GuardDirection.Up;
+                        }
+                        else
+                        {
+                            return (direction, true);
+                        }
+                        break;
+                    case GuardDirection.Down:
+                        if (guardInfo.PosY == input.Count - 1)
+                        {
+                            return (direction, false);
+                        }
+                        if (input[guardInfo.PosY + 1][guardInfo.PosX] == '#')
+                        {
+                            direction = GuardDirection.Left;
+                        }
+                        else
+                        {
+                            return (direction, true);
+                        }
+                        break;
+                    default:
+                        throw new NotImplementedException("move not implemented...");
+                }
+                turnCount++;
+            }
+            throw new Exception("max turn count reached...");
+        }
+
+        private GuardInfo getGuardInfo(List<List<char>> input)
         {
             for (var iRow = 0; iRow < input.Count; iRow++)
             {
                 for (var iCol = 0; iCol < input[iRow].Count; iCol++)
                 {
                     var cell = input[iRow][iCol];
-                    if ((new string[]{ "^", ">", "<", "v" }).Contains(cell))
+                    if ("^><v".Contains(cell))
                     {
                         var guardDirection = GuardDirection.Up;
                         switch (cell)
                         {
-                            case "^":
+                            case '^':
                                 guardDirection = GuardDirection.Up;
                                 break;
-                            case ">":
+                            case '>':
                                 guardDirection = GuardDirection.Right;
                                 break;
-                            case "<":
+                            case '<':
                                 guardDirection = GuardDirection.Left;
                                 break;
-                            case "v":
+                            case 'v':
                                 guardDirection = GuardDirection.Down;
                                 break;
                             default:
@@ -170,6 +246,11 @@ namespace adventofcode24.Day06
             PosX = _posX;
             PosY = _posY;
             Direction = _direction;
+        }
+
+        public override string ToString()
+        {
+            return $"{ PosX };{ PosY };{ Direction }";
         }
     }
 
