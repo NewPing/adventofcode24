@@ -6,6 +6,7 @@ using adventofcode24.Day05;
 using adventofcode24.Day06;
 using adventofcode24.Day07;
 using adventofcode24.Day1;
+using adventofcode24.Day24;
 using adventofcode24.Day25;
 
 Console.WriteLine("Hello, World!");
@@ -16,4 +17,5 @@ Console.WriteLine("Hello, World!");
 //new Day05();
 //new Day06();
 //new Day07();
-new Day25();
+new Day24();
+//new Day25();
